@@ -6,7 +6,7 @@
  * @license http://github.com/atlantaphp/mysql-training-contest/raw/master/LICENSE New BSD License
  */
 
-//ini_set('display_errors', 0);
+ini_set('display_errors', 0);
 require_once 'Inspekt.php';
 require_once 'recaptcha/recaptchalib.php';
 
