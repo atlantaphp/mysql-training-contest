@@ -1,0 +1,68 @@
+body {
+    background-color: #666698;
+    padding: 20px;
+    color: white;
+    font: 10px/2 Geneva, Corbel, 'Microsoft Sans Serif', sans-serif;
+}
+
+a {
+    color: palegoldenrod;
+}
+
+h1 {
+    font-family: 'Gill Sans';
+    font-size: 7em;
+    font-style: italic;
+    letter-spacing: -0.07em;
+    line-height: 0.733;
+    margin: 0;
+    padding: 0 50px 0 0;
+    text-shadow: 2px 1px 1px #333;
+    text-align: right;
+}
+
+h2, h3 {
+    font-size: 2.5em;
+    line-height: 1.0;
+    text-shadow: 2px 1px 1px #333;
+}
+
+h3 {
+    font-size: 2.0em;
+    padding-top: 25px;
+}
+
+#atlphp {
+    float: right;
+    width: 40%;
+}
+
+#details {
+    float: left;
+    width: 60%;
+    padding-bottom: 100px;
+}
+
+#details p, #details form {
+    font-size: 1.7em;
+    line-height: 1.2;
+}
+
+#registration {
+    margin: 25px 0 25px 0;
+}
+
+label {
+    position: absolute;
+    text-align: right;
+    width: 130px;
+}
+
+input {
+    margin-left: 140px;
+}
+
+#info p {
+    font-size: 1.35em;
+}
+
