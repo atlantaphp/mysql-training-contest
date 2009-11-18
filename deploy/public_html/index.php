@@ -1,3 +1,96 @@
+<?php
+/**
+ * Atlanta PHP Contests Micro-site
+ *
+ * @copyright Copyright (c) 2009 Atlanta PHP, LLC
+ * @license http://github.com/atlantaphp/mysql-training-contest/raw/master/LICENSE New BSD License
+ */
+
+ini_set('display_errors', 0);
+require_once('Inspekt.php');
+
+$endDate = strtotime('November 24, 2009 11:59 PM EST');
+$db = new SQLite3('../../db/mysql-contest.db');
+$postCage = Inspekt::makePostCage();
+$errors = array();
+
+// Determine whether the contest is over
+$isOver = false;
+if (time() > $endDate) {
+    $isOver = true;
+}
+
+if (!$isOver) {
+    // Determine whether this user has already registered
+    $isSignedUp = false;
+    if (isset($_COOKIE['atlphp_mysql_contest'])) {
+        $isSignedUp = true;
+    } else {
+        $stmt = $db->prepare('SELECT email FROM entries WHERE ip_addr = :ip_addr');
+        $stmt->bindValue(':ip_addr', $_SERVER['REMOTE_ADDR']);
+        $result = $stmt->execute();
+
+        if ($result->fetchArray()) {
+            $isSignedUp = true;
+        }
+    }
+
+    // Process the form post
+    if ($_SERVER['REQUEST_METHOD'] == 'POST' && !$isSignedUp) {
+
+        $clean = array();
+        $clean['name'] = $postCage->testRegex('name', "/^[\w\'\- ]+$/iu");
+        $clean['email'] = $postCage->testEmail('email');
+
+        // Check for errors
+        if ($clean['name'] === false) {
+            $errors['name'] = 'Please enter a valid name.';
+        }
+        if ($clean['email'] === false) {
+            $errors['email'] = 'Please enter a valid email address.';
+        }
+
+        // Check to see if this email already exists
+        $stmt = $db->prepare('SELECT email FROM entries WHERE email = :email');
+        $stmt->bindValue(':email', $clean['email']);
+        $result = $stmt->execute();
+
+        if ($result->fetchArray()) {
+            setcookie('atlphp_mysql_contest', 1, time()+2592000);
+            header('Location: /');
+        }
+
+        // If there aren't any errors, then save the data
+        if (!$errors) {
+            $stmt = $db->prepare('
+                INSERT INTO entries (
+                    name,
+                    email,
+                    ip_addr,
+                    time)
+                VALUES (
+                    :name,
+                    :email,
+                    :ip_addr,
+                    :time)');
+
+            $stmt->bindValue(':name', $clean['name']);
+            $stmt->bindValue(':email', $clean['email']);
+            $stmt->bindValue(':ip_addr', $_SERVER['REMOTE_ADDR']);
+            $stmt->bindValue(':time', time());
+            $result = $stmt->execute();
+
+            if ($result === false) {
+                $errors['db'] = $db->lastErrorMsg();
+            } else {
+                setcookie('atlphp_mysql_contest', 1, time()+2592000);
+                $isSignedUp = true;
+            }
+        }
+    }
+}
+
+?>
 <!doctype html>
 <html>
 <head>
@@ -22,25 +115,77 @@
 
         <div id="register">
 
-            <p>
-                Enter your name and email address for a chance to win a pass to
-                the workshop <a href="http://percona-ga-atl.eventbrite.com/" target="top">Performance
-                Optimization for MySQL with InnoDB and XtraDB</a> presented by <strong>Morgan
-                Tocker</strong> and hosted by <a href="http://www.percona.com/" target="top">Percona, Inc.</a>
-            </p>
+            <?php if ($isOver): ?>
 
-            <form id="registration">
+                <p>
+                    The contest is now over. Thank you for participating!
+                </p>
 
-                <label for="name">Your name:</label>
-                <input type="text" name="name" id="name" /><br />
+                <p>
+                    Sign up for the workshop <a href="http://percona-ga-atl.eventbrite.com/" target="top">Performance
+                    Optimization for MySQL with InnoDB and XtraDB</a> presented by <strong>Morgan
+                    Tocker</strong> and hosted by <a href="http://www.percona.com/" target="top">Percona, Inc.</a>
+                </p>
 
-                <label for="email">Your email:</label>
-                <input type="text" name="email" id="email" /><br />
+                <p>
+                    Please <a href="http://meetup.atlantaphp.org/calendar/11898004/">join us
+                    at the Atlanta PHP meeting on December 10, 2009 at 7 PM</a>.
+                    Morgan Tocker will be presenting "Quick Wins: Performance
+                    Tuning + 3rd Party Patches for MySQL."
+                </p>
 
-                <label for="submit">&nbsp;</label>
-                <input type="submit" value="Register!">
 
-            </form>
+            <?php elseif ($isSignedUp): ?>
+
+                <p>
+                    Thank you for registering! We'll notify you on November 25,
+                    2009 if you're the winner of the workshop pass.
+                </p>
+
+                <p>
+                    In the meantime, please <a href="http://meetup.atlantaphp.org/calendar/11898004/">RSVP
+                    for the Atlanta PHP meeting on December 10, 2009 at 7 PM</a>.
+                    Morgan Tocker will be presenting "Quick Wins: Performance
+                    Tuning + 3rd Party Patches for MySQL."
+                </p>
+
+            <?php else: ?>
+
+                <p>
+                    Enter your name and email address for a chance to win a pass to
+                    the workshop <a href="http://percona-ga-atl.eventbrite.com/" target="top">Performance
+                    Optimization for MySQL with InnoDB and XtraDB</a> presented by <strong>Morgan
+                    Tocker</strong> and hosted by <a href="http://www.percona.com/" target="top">Percona, Inc.</a>
+                </p>
+
+                <form id="registration" method="post" action="/">
+
+                    <div id="errorMsg">
+                        <?php if ($errors): ?>
+                            <p class="error">
+                                <?php if (isset($errors['db'])): ?>
+                                    Database error: <?php echo htmlentities($errors['db'], ENT_QUOTES, 'UTF-8'); ?>
+                                <?php else: ?>
+                                    Your submission has errors. Please correct them and try again.
+                                <?php endif; ?>
+                            </p>
+                        <?php endif; ?>
+                    </div>
+
+                    <label for="name">Your name:</label>
+                    <input type="text" name="name" id="name" value="<?php echo htmlentities($postCage->getRaw('name'), ENT_QUOTES, 'UTF-8'); ?>" />
+                    <span class="error" id="nameError"><?php if (isset($errors['name'])): echo $errors['name']; endif; ?></span><br />
+
+                    <label for="email">Your email:</label>
+                    <input type="text" name="email" id="email" value="<?php echo htmlentities($postCage->getRaw('email'), ENT_QUOTES, 'UTF-8'); ?>" />
+                    <span class="error" id="emailError"><?php if (isset($errors['email'])): echo $errors['email']; endif; ?></span><br />
+
+                    <label for="submit">&nbsp;</label>
+                    <input type="submit" value="Register!">
+
+                </form>
+
+            <?php endif; ?>
 
         </div>
 
@@ -104,7 +249,12 @@
                 </strong>
             </p>
 
+
         </div>
+    </div>
+
+    <div id="copyright">
+        <p>Copyright &copy; 2009 <a href="http://atlantaphp.org/">Atlanta PHP, LLC.</a></p>
     </div>
 
 </body>

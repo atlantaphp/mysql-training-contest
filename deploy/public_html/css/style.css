@@ -66,3 +66,18 @@ input {
     font-size: 1.35em;
 }
 
+#copyright {
+    clear: both;
+    width: 100%;
+    text-align: left;
+}
+
+.error {
+    font-size: 0.8em;
+    color: yellow;
+    font-weight: bold;
+}
+
+#registration p.error {
+    font-size: 1.0em;
+}
