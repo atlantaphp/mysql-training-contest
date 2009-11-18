@@ -6,8 +6,17 @@
  * @license http://github.com/atlantaphp/mysql-training-contest/raw/master/LICENSE New BSD License
  */
 
-ini_set('display_errors', 0);
-require_once('Inspekt.php');
+//ini_set('display_errors', 0);
+require_once 'Inspekt.php';
+require_once 'recaptcha/recaptchalib.php';
+
+// This pulls the reCAPTCHA private key from an environment variable. Set this
+// in a .htaccess file in the web root, like so:
+//
+//     SetEnv RECAPTCHA_PRIVATE_KEY xxxxxxxxxxxxxxxxxxxxx
+//
+define('RECAPTCHA_PRIVATE_KEY', getenv('RECAPTCHA_PRIVATE_KEY'));
+define('RECAPTCHA_PUBLIC_KEY', '6LdqewkAAAAAAEX_hHRqeQrCq8My6LPr9V72zMyD');
 
 $endDate = strtotime('November 24, 2009 11:59 PM EST');
 $db = new SQLite3('../../db/mysql-contest.db');
@@ -48,6 +57,17 @@ if (!$isOver) {
         }
         if ($clean['email'] === false) {
             $errors['email'] = 'Please enter a valid email address.';
+        }
+
+        // Check the CAPTCHA
+        $response = recaptcha_check_answer(
+            RECAPTCHA_PRIVATE_KEY,
+            $_SERVER['REMOTE_ADDR'],
+            $postCage->getRaw('recaptcha_challenge_field'),
+            $postCage->getRaw('recaptcha_response_field'));
+
+        if (!$response->is_valid) {
+            $errors['captcha'] = $response->error;
         }
 
         // Check to see if this email already exists
@@ -97,6 +117,12 @@ if (!$isOver) {
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
     <title>Atlanta PHP - MySQL Training Raffle</title>
     <link href="css/style.css" type="text/css" rel="stylesheet" media="all" charset="utf-8" />
+    <script type="text/javascript">
+        var RecaptchaOptions = {
+            theme : 'white',
+            tabindex : 3,
+        };
+    </script>
 </head>
 <body>
 
@@ -179,6 +205,10 @@ if (!$isOver) {
                     <label for="email">Your email:</label>
                     <input type="text" name="email" id="email" value="<?php echo htmlentities($postCage->getRaw('email'), ENT_QUOTES, 'UTF-8'); ?>" />
                     <span class="error" id="emailError"><?php if (isset($errors['email'])): echo $errors['email']; endif; ?></span><br />
+
+                    <div id="recaptcha_widget">
+                        <?php echo recaptcha_get_html(RECAPTCHA_PUBLIC_KEY, (isset($errors['captcha']) ? $errors['captcha'] : null)); ?>
+                    </div>
 
                     <label for="submit">&nbsp;</label>
                     <input type="submit" value="Register!">
